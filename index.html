@@ -5,22 +5,82 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Super Polished Meal Planner</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-  .meal { margin: 5px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; display: flex; justify-content: space-between; }
-  .healthy { color: green; font-weight: bold; }
-  button { padding: 10px 20px; margin-top: 20px; width: 100%; font-size: 16px; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    padding: 20px;
+    max-width: 600px;
+    margin: auto;
+    background: #fafafa;
+    color: #333;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    margin: 25px 0;
+    background: #0077cc;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  button:hover {
+    background: #005fa3;
+  }
+
+  .meal {
+    margin: 8px 0;
+    padding: 16px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .meal:active {
+    transform: scale(0.98);
+  }
+
+  .meal:hover {
+    background: #f1f7ff;
+  }
+
+  .highlight {
+    animation: flash 0.4s ease;
+  }
+
+  @keyframes flash {
+    from { background-color: #c8e6c9; }
+    to { background-color: white; }
+  }
+
+  .healthy-label {
+    font-weight: bold;
+    margin-top: 10px;
+    text-align: center;
+    color: #2e7d32;
+  }
 </style>
 </head>
 <body>
 
-<h1>Super Polished Weekly Meal Planner</h1>
-<button onclick="generateMealPlan()">Generate Meal Plan</button>
+<h1>Weekly Meal Planner</h1>
+<button onclick="generateMealPlan()">Generate New Meal Plan</button>
 <div id="meal-plan"></div>
 
 <script>
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-// Recipes data
 const meals = [
   {name:"General Tso Chicken",days:["Friday","Saturday","Sunday"],health:2,core:"Chicken",type:"Asian"},
   {name:"Taco's",days:["Tuesday","Thursday"],health:3,core:"Turkey",type:"Mexican"},
@@ -61,57 +121,91 @@ const meals = [
   {name:"Chicken Korma",days:["Monday","Tuesday","Thursday","Friday","Saturday","Sunday"],health:4,core:"Chicken",type:"Indian"}
 ];
 
+let currentPlan = [];
+
 function generateMealPlan() {
-  const mealPlanDiv = document.getElementById("meal-plan");
-  mealPlanDiv.innerHTML = "";
+  const planDiv = document.getElementById("meal-plan");
+  planDiv.innerHTML = "";
 
   let plan = [];
   let lastCore = null;
   let lastType = null;
   let healthyCount = 0;
 
-  while(true) {
+  while (true) {
     plan = [];
     lastCore = null;
     lastType = null;
     healthyCount = 0;
 
     for (let day of DAYS) {
-      let options = meals.filter(m => 
+      let options = meals.filter(m =>
         m.days.includes(day) &&
         m.core !== lastCore &&
         m.type !== lastType
       );
-      if (options.length === 0) options = meals.filter(m => m.days.includes(day)); // fallback
-
+      if (options.length === 0) options = meals.filter(m => m.days.includes(day));
       let meal = options[Math.floor(Math.random() * options.length)];
-      plan.push({day, meal});
+      plan.push({ day, meal });
       lastCore = meal.core;
       lastType = meal.type;
-      if (meal.health >= 3) healthyCount++; // treating health >=3 as healthy
+      if (meal.health >= 3) healthyCount++;
     }
 
-    if ((healthyCount / DAYS.length) >= 0.7) break; // ensure 70% healthy
+    if ((healthyCount / DAYS.length) >= 0.7) break;
   }
 
-  // display plan
-  for (let entry of plan) {
-    const div = document.createElement("div");
-    div.className = "meal";
-    div.innerHTML = `<span>${entry.day}: ${entry.meal.name} (${entry.meal.core}, ${entry.meal.type})</span> <span class="${entry.meal.health >=3 ? 'healthy' : ''}">${entry.meal.health >=3 ? '✅' : ''}</span>`;
-    mealPlanDiv.appendChild(div);
-  }
-
-  const feedback = document.createElement("div");
-  feedback.style.marginTop = "10px";
-  feedback.style.fontWeight = "bold";
-  feedback.innerText = `Healthy meals this week: ${Math.round((healthyCount / DAYS.length) * 100)}%`;
-  mealPlanDiv.appendChild(feedback);
+  currentPlan = plan;
+  renderPlan();
 }
 
-// generate a plan on page load
-generateMealPlan();
+function renderPlan() {
+  const planDiv = document.getElementById("meal-plan");
+  planDiv.innerHTML = "";
+  let healthyCount = 0;
 
+  currentPlan.forEach((entry, index) => {
+    if (entry.meal.health >= 3) healthyCount++;
+    const div = document.createElement("div");
+    div.className = "meal";
+    div.innerHTML = `<strong>${entry.day}</strong>: ${entry.meal.name}`;
+    div.onclick = () => rerollMeal(index, div);
+    planDiv.appendChild(div);
+  });
+
+  const healthyLabel = document.createElement("div");
+  healthyLabel.className = "healthy-label";
+  healthyLabel.textContent = `Healthy meals this week: ${Math.round((healthyCount / DAYS.length) * 100)}%`;
+  planDiv.appendChild(healthyLabel);
+}
+
+function rerollMeal(index, element) {
+  const day = currentPlan[index].day;
+  const prev = currentPlan[index - 1]?.meal;
+  const next = currentPlan[index + 1]?.meal;
+
+  let options = meals.filter(m =>
+    m.days.includes(day) &&
+    m.name !== currentPlan[index].meal.name &&
+    m.core !== prev?.core &&
+    m.type !== prev?.type &&
+    m.core !== next?.core &&
+    m.type !== next?.type
+  );
+  if (options.length === 0) options = meals.filter(m => m.days.includes(day));
+  
+  const newMeal = options[Math.floor(Math.random() * options.length)];
+  currentPlan[index].meal = newMeal;
+
+  element.classList.add("highlight");
+  setTimeout(() => element.classList.remove("highlight"), 400);
+
+  renderPlan();
+}
+
+// generate plan on first load
+generateMealPlan();
 </script>
+
 </body>
 </html>
